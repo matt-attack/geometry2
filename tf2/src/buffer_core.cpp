@@ -100,6 +100,7 @@ void setIdentity(geometry_msgs::msg::Transform& tx)
 
 bool startsWithSlash(const std::string& frame_id)
 {
+  return false;
   if (frame_id.size() > 0)
     if (frame_id[0] == '/')
       return true;
@@ -125,13 +126,13 @@ bool BufferCore::warnFrameId(const char* function_name_arg, const std::string& f
     return true;
   }
 
-  if (startsWithSlash(frame_id))
+  /*if (startsWithSlash(frame_id))
   {
     std::stringstream ss;
     ss << "Invalid argument \"" << frame_id << "\" passed to "<< function_name_arg <<" in tf2 frame_ids cannot start with a '/' like: ";
     CONSOLE_BRIDGE_logWarn("%s",ss.str().c_str());
     return true;
-  }
+  }*/
 
   return false;
 }
@@ -145,12 +146,11 @@ CompactFrameID BufferCore::validateFrameId(const char* function_name_arg, const 
     throw tf2::InvalidArgumentException(ss.str().c_str());
   }
 
-  if (startsWithSlash(frame_id))
-  {
+  /*{
     std::stringstream ss;
     ss << "Invalid argument \"" << frame_id << "\" passed to "<< function_name_arg <<" in tf2 frame_ids cannot start with a '/' like: ";
     throw tf2::InvalidArgumentException(ss.str().c_str());
-  }
+  }*/
 
   CompactFrameID id = lookupFrameNumber(frame_id);
   if (id == 0)
@@ -830,12 +830,15 @@ bool BufferCore::canTransformInternal(CompactFrameID target_id, CompactFrameID s
   return canTransformNoLock(target_id, source_id, time, error_msg);
 }
 
-bool BufferCore::canTransform(const std::string& target_frame, const std::string& source_frame,
+bool BufferCore::canTransform(const std::string& target_framea, const std::string& source_framea,
                            const TimePoint& time, std::string* error_msg) const
 {
   // Short circuit if target_frame == source_frame
-  if (target_frame == source_frame)
+  if (target_framea == source_framea)
     return true;
+
+  std::string target_frame = stripSlash(target_framea);
+  std::string source_frame = stripSlash(source_framea);
 
   if (warnFrameId("canTransform argument target_frame", target_frame))
     return false;
@@ -850,10 +853,14 @@ bool BufferCore::canTransform(const std::string& target_frame, const std::string
   return canTransformNoLock(target_id, source_id, time, error_msg);
 }
 
-bool BufferCore::canTransform(const std::string& target_frame, const TimePoint& target_time,
-                          const std::string& source_frame, const TimePoint& source_time,
-                          const std::string& fixed_frame, std::string* error_msg) const
+bool BufferCore::canTransform(const std::string& target_framea, const TimePoint& target_time,
+                          const std::string& source_framea, const TimePoint& source_time,
+                          const std::string& fixed_framea, std::string* error_msg) const
 {
+  std::string target_frame = stripSlash(target_framea);
+  std::string source_frame = stripSlash(source_framea);
+  std::string fixed_frame = stripSlash(fixed_framea);
+
   if (warnFrameId("canTransform argument target_frame", target_frame))
     return false;
   if (warnFrameId("canTransform argument source_frame", source_frame))
@@ -877,8 +884,9 @@ tf2::TimeCacheInterfacePtr BufferCore::getFrame(CompactFrameID frame_id) const
 
 CompactFrameID BufferCore::lookupFrameNumber(const std::string& frameid_str) const
 {
+  std::string n = stripSlash(frameid_str);
   CompactFrameID retval;
-  M_StringToCompactFrameID::const_iterator map_it = frameIDs_.find(frameid_str);
+  M_StringToCompactFrameID::const_iterator map_it = frameIDs_.find(n);//frameid_str);
   if (map_it == frameIDs_.end())
   {
     retval = CompactFrameID(0);
